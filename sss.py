@@ -8,7 +8,7 @@ zeros_tensor = torch.zeros(2,3)
 ###print(zeros_tensor)
 
 empty_tensor = torch.empty(4,2,5, dtype=torch.double)
-print(empty_tensor)
+#print(empty_tensor)
 ###print(empty_tensor.size())
 
 #creating a tensor from a list datatype
@@ -79,9 +79,10 @@ reshaped_to_only_we_know_column_is_2 = random_tensor3.view(-1,2)
 random_tensor4 = torch.ones(4).to(device)
 #OR
 random_tensor = torch.ones(4, device=device)
-
 ###print(random_tensor4)
+
 turn_into_numpy_array = random_tensor4.to("cpu").numpy()
+
 ####print(type(turn_into_numpy_array))
 ###print(type(random_tensor4))
 
@@ -96,6 +97,7 @@ random_tensor4.add_(1)
 #from numpy to tensor
 random_numpy_array = np.ones(6)
 turn_to_tensor = torch.from_numpy(random_numpy_array)
+
 ###print(type(turn_to_tensor))
 
 #change from 'gpu' to cpu
@@ -163,7 +165,6 @@ squared_loss = (y-y_hat)**2
 ##print(squared_loss)
 squared_loss.backward()
 ##print(w.grad)
-
 """"""""""""""""""""
 #lets calculate the linear regression manually using numpy arrays
 # lets imagine our model is f and f = x * 2
@@ -248,7 +249,7 @@ Y2 = torch.tensor([[2],[4],[6],[8]], dtype=torch.float32)
 X_test = torch.tensor([7], dtype=torch.float32)
 
 #you don't have to define variable for 'w' weights while you are using the torch
-n_samples, n_features,  = X2.shape
+n_samples, n_features  = X2.shape
 #print(n_samples, n_features)
 number_of_input_feature = number_of_output_feature = n_features
 number_of_epoches = 20
@@ -328,6 +329,7 @@ class myLinearRegression(nn.Module):
         self.lin = nn.Linear(input_dimension, output_dimension)
     def forward(self, x):
         return self.lin(x)
+    
 forward_by_torch2 = myLinearRegression(number_of_input_feature, number_of_output_feature)
 #loss
 loss_valued = nn.MSELoss() #is equal to manual function and take 2 argument
@@ -342,7 +344,7 @@ for epoch in range (number_of_epoches):
     optimizer1.step() #is euqal to w -= lr*w.gradient
     optimizer1.zero_grad() #is euqal to w.gradient.zero()
     w, b = forward_by_torch2.parameters()
-    print(f"for epoch number: {epoch+1} the w is{w[0][0].item():0.3f} and the loss is {lossval:0.3f}")
+    #print(f"for epoch number: {epoch+1} the w is{w[0][0].item():0.3f} and the loss is {lossval:0.3f}")
 
 ##################################################
 #for working with torch
@@ -354,8 +356,59 @@ for epoch in range (number_of_epoches):
 import torch
 import torch.nn as nn
 import sklearn.datasets as datasets
-import matplotlib as plt
+import matplotlib.pyplot as plt
+import numpy as np
+#random_state (any number) -> make sure everytime the code is running the same random number are produced
+#random_state = None -> everytime code runs, different output is observable
+#This scikit-learn function aur
+x_numpy, y_numpy = datasets.make_regression(n_samples=100, n_features=1, noise = 10, random_state=None)
+#when we have 2D array we have [ : , : ] instead of [ : ] becuase each [ : ] is for determening a span of numbers
 
-x_numpy, y_numpy = datasets.make_regression()
+#print(f"the x_numpy is: {x_numpy[:2,:2]}")
 
-#x_numpy, y_numpy = datase
+#prints 2 First row (two first data) and their 4 first features
+#the scikit-learn function automatically make numpy array, you should change it to torch
+#numpy arrays is 'double' datatype from the beggining, torch works with float32
+X_transfered_from_numpy_to_torch = torch.from_numpy(x_numpy.astype(np.float32))
+Y_transforemed_from_numpy_to_torch = torch.from_numpy(y_numpy.astype(np.float32))
+#print(Y_transforemed_from_numpy_to_torch.shape)
+#'Y_transforemed_from_numpy_to_torch' has only 1 row, we want to make it a column vecotr (n row , 1 column) each representing the data
+Y_transforemed_from_numpy_to_torch = Y_transforemed_from_numpy_to_torch.view(Y_transforemed_from_numpy_to_torch.shape[0], 1)
+print(Y_transforemed_from_numpy_to_torch.shape)
+
+n_samples, n_features = X_transfered_from_numpy_to_torch.shape
+
+#1) model:
+input_size = n_features
+output_size = 1
+model = nn.Linear(input_size, output_size)
+
+#2)loss and optimizer:
+lr = 0.01
+Criteration = nn.MSELoss()
+optimizer3 = torch.optim.SGD(params=model.parameters(), lr= lr)
+
+#epoch = a loop of traning over all training dataset
+n_epoch = 100
+for epoch in range(n_epoch):
+    #forward and loss
+    Y_predicted_by_model = model(X_transfered_from_numpy_to_torch)
+    lossFunction = Criteration(Y_transforemed_from_numpy_to_torch, Y_predicted_by_model)
+    
+    #backward pass -> calculate the gredient for us
+    lossFunction.backward()
+    #update the gredient
+    optimizer3.step()
+    #make gredient ready for the next loop
+    optimizer3.zero_grad()
+    #print the loss and gredient
+    if (n_epoch%10) == 0:
+        print(f"for epoch number{n_epoch+1} the loss is {lossFunction.item():.4f}")
+
+
+#plotting using matplotlib -> for plotting better use numpy
+#before turn to numpy, use detach() method to make required_grad = False instead of true
+transofrm_the_final_model_to_numpy = model(X_transfered_from_numpy_to_torch).detach().numpy()
+plt.plot(x_numpy, y_numpy, 'ro')
+plt.plot(x_numpy, transofrm_the_final_model_to_numpy, 'b')
+plt.show()
